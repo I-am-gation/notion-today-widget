@@ -1,4 +1,4 @@
-# 打包 notion-today-widget（Windows PowerShell）
+﻿# 打包 notion-today-widget（Windows PowerShell）
 # 用法：在仓库根目录执行  .\tools\build.ps1
 #
 #   .\tools\build.ps1                      安全模式：dist 里放占位配置，可直接分发
@@ -27,7 +27,13 @@ Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
 # 用仓库里提交的 spec，而不是让 PyInstaller 现场重新生成一个。
 # 现场生成的那个 spec 会把本机绝对路径写进去，换台机器就失效。
 Write-Host '==> PyInstaller 打包（使用 notion-today-widget.spec）'
+# PS 5.1 会把原生命令写向 stderr 的每一行当成 ErrorRecord，在 $ErrorActionPreference='Stop'
+# 下这会直接中断脚本；而 PyInstaller 的日志全部走 stderr。这里临时放宽，改为自己查退出码。
+$ErrorActionPreference = 'Continue'
 pyinstaller --noconfirm --clean notion-today-widget.spec
+$pyiCode = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($pyiCode -ne 0) { Write-Error "PyInstaller 打包失败，退出码 $pyiCode"; exit 1 }
 
 $out = Join-Path $root 'dist\notion-today-widget'
 $realCfg = Join-Path $root 'config.json'
@@ -49,7 +55,9 @@ if ($IncludeLocalConfig) {
     Write-Host '    已放入占位配置（首次运行需自行填写令牌）'
 
     # 失败即中止：万一以后有人改回「拷真实配置」，这里会拦下而不是把令牌发出去
-    $shipped = Get-Content (Join-Path $out 'config.json') -Raw | ConvertFrom-Json
+    # PS 5.1 的 Get-Content 默认按系统代码页读取：UTF-8 无 BOM 的中文会被读乱，
+    # 进而破坏 JSON 结构（非法引号）导致 ConvertFrom-Json 报错。必须显式指定 UTF8。
+    $shipped = Get-Content (Join-Path $out 'config.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($shipped.token -ne $placeholder) {
         Write-Error '发布目录里的 config.json 不是占位模板，可能含真实令牌。已中止。'
         exit 1
