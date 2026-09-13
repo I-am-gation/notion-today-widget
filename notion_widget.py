@@ -127,11 +127,23 @@ class Notion:
 # 原因：本机代理软件注入 Winsock LSP，进程加载 Qt6 后，若 socket 由后台线程创建、
 # 且与主线程 GUI 操作并发，会在 socket()/create_connection 处 access violation（pythonw 必现）。
 # 主线程建 socket 始终安全；每小时仅刷新一次、1~2 秒短暂阻塞可接受，换取零崩溃。
+def _net_err_text(e):
+    """把网络异常翻译成一句能直接定位问题的文字。
+    只显示 type(e).__name__（原实现只显示 "URLError"）对排查毫无帮助——
+    URLError 会把 SSL、DNS、连接被拒等完全不同的原因全裹成同一个名字。"""
+    if isinstance(e, urllib.error.HTTPError):
+        return f"HTTP {e.code}"
+    if isinstance(e, urllib.error.URLError):
+        r = e.reason
+        return r if isinstance(r, str) else f"{type(r).__name__}: {r}"
+    return f"{type(e).__name__}: {e}"
+
+
 def run_net(fn, on_ok, on_err, delay=40):
     def job():
         try: on_ok(fn())
         except Exception as e:
-            if on_err: on_err(f"HTTP {e.code}" if isinstance(e, urllib.error.HTTPError) else type(e).__name__)
+            if on_err: on_err(_net_err_text(e))
     QTimer.singleShot(delay, job)
 
 # ---------------- Win32 毛玻璃 / 圆角 / 不抢焦点 ----------------
@@ -333,6 +345,12 @@ class Widget(QWidget):
         self.btn_r.setText("⟳"); self._fit_height(); QTimer.singleShot(1500, trim_memory)
     def _fail(self, msg):
         self.status.setText(f"拉取失败（{msg}），点 ⟳ 重试"); self.btn_r.setText("⟳")
+        # 落盘：窗口上放不下完整原因，出问题时能直接看这个文件
+        try:
+            with open(os.path.join(BASE, "_error.log"), "a", encoding="utf-8") as f:
+                f.write("%s  拉取失败: %s\n"
+                        % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg))
+        except Exception: pass
     def _toggle(self, pid, val):
         run_net(lambda: self.notion.set_done(pid, val),
                lambda r: self._patched(pid, True, val),
