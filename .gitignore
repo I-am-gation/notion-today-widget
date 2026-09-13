@@ -1,0 +1,24 @@
+# 凭据：含明文 Notion 集成令牌，绝不提交
+config.json
+_crash.log
+
+# 构建产物
+build/
+dist/
+__pycache__/
+*.pyc
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Windows 系统文件
+Thumbs.db
+desktop.ini

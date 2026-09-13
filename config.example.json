@@ -1,0 +1,14 @@
+{
+  "token": "ntn_在此填入你的Notion集成令牌",
+  "database_id": "在此填入你的数据库ID",
+  "notion_version": "2022-06-28",
+  "refresh_minutes": 60,
+  "on_top": true,
+  "width": 364,
+  "pos": {
+    "x": 1792,
+    "y": 378
+  },
+  "acrylic_color": "0xE61A1A20",
+  "note": "本文件是可提交的占位模板。真正的 config.json 含明文令牌，必须留在 .gitignore 内，不得进入任何公开仓库或发布物料。"
+}
